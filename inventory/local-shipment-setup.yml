@@ -1,0 +1,125 @@
+shipment_demo:
+  hosts:
+    macbook:
+      ansible_connection: local
+      secure_connection: false
+      port: 8080
+      host: 192.168.0.8
+      password: admin
+      username: admin 
+      msg_vpn: default
+      bridges:
+      - name: mac-partner-edge-01
+        virtual_router: auto
+        guaranteed_remote_subscriptions: 
+        - name: "shipment/from/UK/to/>"
+          queue: mac-partner-edge-01_Queue
+        - name: "shipment/from/FR/to/>"
+          queue: mac-partner-edge-01_Queue
+        - name: "shipment/from/*/to/UK/>"
+          queue: mac-partner-edge-01_Queue
+        - name: "shipment/from/*/to/FR/>"
+          queue: mac-partner-edge-01_Queue
+      acls: 
+      - name: shipping_publisher
+        client_connect_default: allow
+        publish_topic_exceptions:
+        - topic: shipment/>
+          syntax: smf
+      - name: global_shipping_ops
+        client_connect_default: allow
+        subscribe_topic_exceptions:
+        - topic: shipment/>
+          syntax: smf
+      users:
+      - name: publisher
+        password: HLP2
+        acl_profile: shipping_publisher
+        client_profile: default
+        enabled: true
+      - name: global_ops_europe
+        password: wzC3B
+        acl_profile: global_shipping_ops
+        client_profile: default
+        enabled: true
+
+    lenovo:
+      ansible_connection: local
+      secure_connection: false
+      port: 8080
+      host: 192.168.0.34
+      password: admin
+      username: admin
+      msg_vpn: default
+      bridges:
+      - name: lenovo-partner-edge-02
+        virtual_router: auto
+        guaranteed_remote_subscriptions: 
+        - name: "shipment/from/US/to/>"
+          queue: lenovo-partner-edge-02_Queue
+        - name: "shipment/from/*/to/US/>"
+          queue: lenovo-partner-edge-02_Queue
+      acls: 
+      - name: shipping_publisher
+        client_connect_default: allow
+        publish_topic_exceptions:
+        - topic: shipment/>
+          syntax: smf
+      - name: global_shipping_ops
+        client_connect_default: allow
+        subscribe_topic_exceptions:
+        - topic: shipment/>
+          syntax: smf
+      users:
+      - name: publisher
+        password: HLP2
+        acl_profile: shipping_publisher
+        client_profile: default
+        enabled: true
+      - name: global_ops_us
+        password: wzC3B
+        acl_profile: global_shipping_ops
+        client_profile: default
+        enabled: true
+
+    partner_edge_01_na:
+      ansible_connection: local
+      secure_connection: true
+      port: 943
+      host: mr2.messaging.solace.cloud
+      password: nrkijp
+      username: partner-edge-01-admin
+      msg_vpn: partner-edge-01
+      acls: 
+      - name: partner-subscriber
+        client_connect_default: allow
+        subscribe_topic_exceptions:
+        - topic: "shipment/>"
+          syntax: smf
+      users:
+      - name: demo
+        password: HLP2
+        acl_profile: partner-subscriber
+        client_profile: default
+        enabled: true
+
+    partner_edge_02_na:
+      ansible_connection: local
+      secure_connection: true
+      port: 943
+      host: mr.messaging.solace.cloud
+      password: r1fuaql
+      username: partner-edge-02-admin
+      msg_vpn: partner-edge-02
+      acls:
+      - name: partner-subscriber
+        client_connect_default: allow
+        subscribe_topic_exceptions:
+        - topic: "shipment/>"
+          syntax: smf
+      users:
+      - name: demo
+        password: HLP2
+        acl_profile: partner-subscriber
+        client_profile: default
+        enabled: true

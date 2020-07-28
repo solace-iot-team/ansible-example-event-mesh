@@ -1,0 +1,166 @@
+- name: Set up Sfara demo
+  hosts: sfara_demo
+  module_defaults:
+    solace_acl_profile:
+      password: "{{ password }}"
+      host: "{{ host }}"
+      port: "{{ port }}"
+      username: "{{ username }}"
+      secure_connection: "{{ secure_connection }}"
+      timeout: 25
+      x_broker: "{{ x_broker | default() }}"
+    solace_acl_publish_exception:
+      password: "{{ password }}"
+      host: "{{ host }}"
+      port: "{{ port }}"
+      username: "{{ username }}"
+      secure_connection: "{{ secure_connection }}"
+      timeout: 25
+      x_broker: "{{ x_broker | default() }}"
+    solace_acl_subscribe_exception:
+      password: "{{ password }}"
+      host: "{{ host }}"
+      port: "{{ port }}"
+      username: "{{ username }}"
+      secure_connection: "{{ secure_connection }}"
+      timeout: 25
+      x_broker: "{{ x_broker | default() }}"
+    solace_client:
+      password: "{{ password }}"
+      host: "{{ host }}"
+      port: "{{ port }}"
+      username: "{{ username }}"
+      secure_connection: "{{ secure_connection }}"
+      timeout: 25
+      x_broker: "{{ x_broker | default() }}"
+    solace_queue:
+      password: "{{ password }}"
+      host: "{{ host }}"
+      port: "{{ port }}"
+      username: "{{ username }}"
+      secure_connection: "{{ secure_connection }}"
+      timeout: 25
+      x_broker: "{{ x_broker | default() }}"
+    solace_bridge_remote_subscription:
+      password: "{{ password }}"
+      host: "{{ host }}"
+      port: "{{ port }}"
+      username: "{{ username }}"
+      secure_connection: "{{ secure_connection }}"
+      timeout: 25
+      x_broker: "{{ x_broker | default() }}"
+    solace_subscription:
+      password: "{{ password }}"
+      host: "{{ host }}"
+      port: "{{ port }}"
+      username: "{{ username }}"
+      secure_connection: "{{ secure_connection }}"
+      timeout: 25
+      x_broker: "{{ x_broker | default() }}"
+
+  tasks:
+  - name: Remove Client Usernames before removing the ACL Profile
+    solace_client:
+      name: "{{ item.name }}"
+      msg_vpn: "{{ msg_vpn }}"
+      state: absent
+    loop: "{{ users | default([]) }} "
+
+  - name: Remove ACL Profile
+    solace_acl_profile:
+      name: "{{ item.name }}"
+      msg_vpn: "{{ msg_vpn }}"
+      state: absent
+    loop: "{{ acls | default([]) }} "
+
+  - name: Add ACL Profile
+    solace_acl_profile:
+      name: "{{ item.name }}"
+      msg_vpn: "{{ msg_vpn }}"
+      settings:
+        clientConnectDefaultAction: "{{ item.client_connect_default }}"
+    loop: "{{ acls | default([]) }} "
+
+  - name: Remove ACL Publish Exception
+    solace_acl_publish_exception:
+      name: "{{ item.1.topic }}"
+      acl_profile_name: "{{ item.0.name }}"
+      msg_vpn: "{{ msg_vpn }}"
+      state: absent
+    with_subelements: 
+      - "{{ acls | default([]) }} "
+      - publish_topic_exceptions
+      - flags:
+        skip_missing: true
+
+  - name: Add ACL Publish Exception
+    solace_acl_publish_exception:
+      name: "{{ item.1.topic }}"
+      acl_profile_name: "{{ item.0.name }}"
+      msg_vpn: "{{ msg_vpn }}"
+      topic_syntax: "{{ item.1.syntax }}"
+    with_subelements: 
+      - "{{ acls | default([]) }} "
+      - publish_topic_exceptions
+      - flags:
+        skip_missing: true
+
+  - name: Remove ACL Subscribe Exception
+    solace_acl_subscribe_exception:
+      name: "{{ item.1.topic }}"
+      acl_profile_name: "{{ item.0.name }}"
+      msg_vpn: "{{ msg_vpn }}"
+      state: absent
+    with_subelements: 
+      - "{{ acls | default([]) }} "
+      - subscribe_topic_exceptions
+      - flags:
+        skip_missing: true
+
+  - name: Add ACL Subscribe Exception
+    solace_acl_subscribe_exception:
+      name: "{{ item.1.topic }}"
+      acl_profile_name: "{{ item.0.name }}"
+      msg_vpn: "{{ msg_vpn }}"
+      topic_syntax: "{{ item.1.syntax }}"
+    with_subelements: 
+      - "{{ acls | default([]) }} "
+      - subscribe_topic_exceptions
+      - flags:
+        skip_missing: true
+
+  - name: Add Client
+    solace_client:
+      name: "{{ item.name }}"
+      msg_vpn: "{{ msg_vpn }}"
+      settings:
+        clientProfileName: "{{ item.client_profile }}"
+        aclProfileName: "{{ item.acl_profile }}"
+        password: "{{ item.password }}"
+        enabled: "{{ item.enabled }}"
+    loop: "{{ users | default([]) }} "
+
+  - name: add subscriptions
+    solace_bridge_remote_subscription:
+      name: "{{ item.1.name }}"
+      msg_vpn: "{{ msg_vpn }}"
+      bridge_name: "{{ item.0.name }}"
+      virtual_router: "{{ item.0.virtual_router }}"
+      deliver_always: true
+    with_subelements: 
+      - "{{ bridges | default([]) }}"
+      - remote_subscriptions
+      - flags:
+        skip_missing: true
+
+  - name: add guaranteed subscriptions
+    solace_subscription:
+      topic: "{{ item.1.name }}"
+      msg_vpn: "{{ msg_vpn }}"
+      queue: "{{ item.1.queue }}"
+    with_subelements: 
+      - "{{ bridges | default([]) }}"
+      - guaranteed_remote_subscriptions
+      - flags:
+        skip_missing: true
+
