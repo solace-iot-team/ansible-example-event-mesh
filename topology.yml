@@ -1,0 +1,268 @@
+- name: 'Playbook to set up Event Mesh Topology: Static Bridges'
+  hosts: internal_dmr:public_cloud
+  module_defaults:
+    solace_queue:
+      password: "{{ password }}"
+      host: "{{ host }}"
+      port: "{{ port }}"
+      username: "{{ username }}"
+      secure_connection: "{{ secure_connection }}"
+      timeout: 30
+      x_broker: "{{ x_broker | default() }}"
+    solace_bridge:
+      password: "{{ password }}"
+      host: "{{ host }}"
+      port: "{{ port }}"
+      username: "{{ username }}"
+      secure_connection: "{{ secure_connection }}"
+      timeout: 30
+      x_broker: "{{ x_broker | default() }}"
+    solace_bridge_remote_vpn:
+      password: "{{ password }}"
+      host: "{{ host }}"
+      port: "{{ port }}"
+      username: "{{ username }}"
+      secure_connection: "{{ secure_connection }}"
+      timeout: 30
+      x_broker: "{{ x_broker | default() }}"
+    solace_bridge_tls_cn:
+      password: "{{ password }}"
+      host: "{{ host }}"
+      port: "{{ port }}"
+      username: "{{ username }}"
+      secure_connection: "{{ secure_connection }}"
+      timeout: 30
+      x_broker: "{{ x_broker | default() }}"
+
+  tasks:
+
+  # remove any existing queues backing static bridges and re-create
+  - name: Remove queue
+    solace_queue:
+      name: "{{ item.1.name }}"
+      msg_vpn: "{{ msg_vpn }}"
+      state: absent
+    with_subelements: 
+      - "{{ bridges|default([]) }}"
+      - queues
+      - flags:
+        skip_missing: true
+
+  - name: Add queue
+    solace_queue:
+      name: "{{ item.1.name }}"
+      msg_vpn: "{{ msg_vpn }}"
+      settings:
+        owner: "{{ item.1.owner }}"
+        permission: consume
+        egressEnabled: true
+        ingressEnabled: true
+      state: present
+    with_subelements: 
+      - "{{ bridges|default([]) }}"
+      - queues
+      - flags:
+        skip_missing: true
+    ignore_errors: yes
+
+  # remove existing bridges and re-create
+  - name: Remove Bridge
+    loop: "{{ bridges|default([]) }}"
+    solace_bridge:
+      name: "{{ item.name }}"
+      msg_vpn: "{{ msg_vpn }}"
+      virtual_router: "{{ item.virtual_router }}"
+      state: absent
+
+  - name: Create or update bridge
+    loop: "{{ bridges|default([]) }}"
+    solace_bridge:
+      name: "{{ item.name }}"
+      msg_vpn: "{{ msg_vpn }}"
+      virtual_router: "{{ item.virtual_router }}"
+      settings:
+        enabled: false
+        remoteAuthenticationBasicClientUsername: "{{item.remote_auth_basic_client_username}}"
+        remoteAuthenticationBasicPassword: "{{ item.remote_auth_basic_password }}"
+        remoteAuthenticationScheme: basic
+
+  # add remote VPNs to bridges
+  - name: Add Bridge Remote VPN
+    solace_bridge_remote_vpn:
+      name: "{{ item.1.name }}"
+      msg_vpn: "{{ msg_vpn }}"
+      bridge_name: "{{ item.0.name }}"
+      remote_vpn_location: "{{item.1.location}}"
+      virtual_router: "{{ item.0.virtual_router }}"
+      settings:
+        enabled: true
+        clientUsername: "{{item.0.remote_auth_basic_client_username}}"
+        password: "{{ item.0.remote_auth_basic_password }}"
+        queueBinding: "{{ item.1.queue_binding }}"
+        tlsEnabled: "{{item.1.tls_enabled}}"
+    with_subelements: 
+      - "{{ bridges|default([]) }}"
+      - remote_vpns
+      - flags:
+        skip_missing: true
+
+  - name: Add trusted Common Name to bridges
+    solace_bridge_tls_cn:
+      name: "{{ item.1.name }}"
+      msg_vpn: "{{ msg_vpn }}"
+      bridge_name: "{{ item.0.name }}"
+      virtual_router: "{{ item.0.virtual_router }}"
+    with_subelements: 
+      - "{{ bridges|default([]) }}"
+      - trusted_common_names
+      - flags:
+        skip_missing: true
+
+
+  - name: Enable bridges
+    solace_bridge:
+      name: "{{ item.name }}"
+      msg_vpn: "{{ msg_vpn }}"
+      virtual_router: "{{ item.virtual_router }}"
+      settings:
+        enabled: true
+    loop: "{{ bridges|default([]) }}"
+
+- name:  Create DMR Mesh between brokers
+  hosts: internal_dmr
+  module_defaults:
+    solace_dmr:
+      password: "{{ password }}"
+      host: "{{ host }}"
+      port: "{{ port }}"
+      username: "{{ username }}"
+      secure_connection: "{{ secure_connection }}"
+      timeout: 30
+      x_broker: "{{ x_broker | default() }}"
+    solace_link:
+      password: "{{ password }}"
+      host: "{{ host }}"
+      port: "{{ port }}"
+      username: "{{ username }}"
+      secure_connection: "{{ secure_connection }}"
+      timeout: 30
+      x_broker: "{{ x_broker | default() }}"
+    solace_link_remote_address:
+      password: "{{ password }}"
+      host: "{{ host }}"
+      port: "{{ port }}"
+      username: "{{ username }}"
+      secure_connection: "{{ secure_connection }}"
+      timeout: 30
+      x_broker: "{{ x_broker | default() }}"
+    solace_link_trusted_cn:
+      password: "{{ password }}"
+      host: "{{ host }}"
+      port: "{{ port }}"
+      username: "{{ username }}"
+      secure_connection: "{{ secure_connection }}"
+      timeout: 30
+      x_broker: "{{ x_broker | default() }}"
+    solace_cert_authority:
+      password: "{{ password }}"
+      host: "{{ host }}"
+      port: "{{ port }}"
+      username: "{{ username }}"
+      secure_connection: "{{ secure_connection }}"
+      timeout: 30
+      x_broker: "{{ x_broker | default() }}"
+
+  tasks:
+  - name: Remove cert authority
+    solace_cert_authority:
+      name: self-signed
+      state: absent
+  - name: Add cert authority
+    solace_cert_authority:
+      name: self-signed
+      state: present
+      cert_content: '{{ cert_content }}'
+
+  - name: Remove DMR Cluster
+    solace_dmr:
+      name: "{{dmr_internal_cluster}}"
+      state: absent
+
+  - name: Add DMR Cluster
+    solace_dmr:
+      name: "{{dmr_internal_cluster}}"
+      state: present
+      settings:
+        tlsServerCertEnforceTrustedCommonNameEnabled: "{{enforce_trusted_common_name}}"
+        tlsServerCertValidateDateEnabled: false
+        tlsServerCertMaxChainDepth: 6
+        authenticationBasicPassword: "{{dmr_cluster_password}}"
+    register: dmr_create_out
+
+  - name: Remove DMR Link
+    solace_link:
+      name: "{{item.remote_node}}"
+      dmr: "{{dmr_internal_cluster}}"
+      state: absent
+    loop: "{{ dmr_links|default([]) }}"
+
+  - name: Add DMR Link
+    solace_link:
+      name: "{{item.remote_node}}"
+      dmr: "{{dmr_internal_cluster}}"
+      state: present
+      settings:
+        enabled: false
+        authenticationBasicPassword: "{{dmr_cluster_password}}"
+        span: "{{dmr_span}}"
+        initiator: "{{item.initiator}}"
+        transportTlsEnabled: false
+    loop: "{{ dmr_links|default([]) }}"
+
+  - name: Remove DMR Link Remote address
+    solace_link_remote_address:
+      name: "{{item.dmr_remote_address}}"
+      remote_node_name: "{{item.remote_node}}"
+      dmr: "{{dmr_internal_cluster}}"
+      state: absent
+    loop: "{{ dmr_links|default([]) }}"
+
+  - name: Add DMR Link Remote address
+    solace_link_remote_address:
+      name: "{{item.dmr_remote_address}}"
+      remote_node_name: "{{item.remote_node}}"
+      dmr: "{{dmr_internal_cluster}}"
+      state: present
+    loop: "{{ dmr_links|default([]) }}"
+
+  - name: Remove DMR Link Trusted CN
+    solace_link_trusted_cn:
+      name: "{{item.1.name}}"
+      remote_node_name: "{{item.0.remote_node}}"
+      dmr: "{{dmr_internal_cluster}}"
+      state: absent
+    with_subelements: 
+      - "{{ dmr_links|default([]) }}"
+      - trusted_common_names
+      - flags:
+        skip_missing: true
+
+  - name: Add DMR Link Trusted CN
+    solace_link_trusted_cn:
+      name: "{{item.1.name}}"
+      remote_node_name: "{{item.0.remote_node}}"
+      dmr: "{{dmr_internal_cluster}}"
+      state: present
+    with_subelements: 
+      - "{{ dmr_links|default([]) }}"
+      - trusted_common_names
+      - flags:
+        skip_missing: true
+
+  - name: Enable DMR Link
+    solace_link:
+      name: "{{item.remote_node}}"
+      dmr: "{{dmr_internal_cluster}}"
+      settings:
+        enabled: true
+    loop: "{{ dmr_links|default([]) }}"

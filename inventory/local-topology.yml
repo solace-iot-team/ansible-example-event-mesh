@@ -1,0 +1,117 @@
+internal_dmr:
+  hosts:
+    macbook:
+      ansible_connection: local
+      msg_vpn: default
+      host: localhost
+      dmr_links:
+      - name: internal-lenovo
+        remote_node: v195858
+        dmr_remote_address: 192.168.0.34:55555
+        initiator: remote
+        trusted_common_names:
+        - name: "CA-CERT"
+      bridges:
+      - name: mac-partner-edge-01
+        remote_auth_basic_client_username: solace-cloud-client
+        remote_auth_basic_password: secret
+        virtual_router: auto
+        queues: 
+        - name: mac-partner-edge-01_Queue
+          owner: default
+        remote_vpns: 
+        - name: partner-edge-01
+          location: mr2.messaging.solace.cloud:55555
+          queue_binding: mac-partner-edge-01_Queue
+          tls_enabled: false
+        trusted_common_names:
+          - name: "CA-CERT"
+    lenovo:
+      ansible_connection: local
+      host: 192.168.0.34
+      msg_vpn: default
+      dmr_links:
+      - name: internal-macbook
+        remote_node: secret
+        dmr_remote_address: 192.168.0.8:55555
+        initiator: local
+        trusted_common_names:
+        - name: "CA-CERT"
+      bridges:
+      - name: lenovo-partner-edge-02
+        remote_auth_basic_client_username: solace-cloud-client
+        remote_auth_basic_password: secret
+        virtual_router: auto
+        queues: 
+        - name: lenovo-partner-edge-02_Queue
+          owner: default
+        remote_vpns: 
+        - name: partner-edge-02
+          location: mr.solace.cloud:55555
+          queue_binding: lenovo-partner-edge-02_Queue
+          tls_enabled: false
+        trusted_common_names:
+          - name: "CA-CERT"
+
+  vars:
+    # use common connection parameters as we use the cloud API SEMP v2 proxy
+    secure_connection: false
+    port: 8080
+    password: admin
+    username: admin 
+    dmr_internal_cluster: internal-cluster
+    dmr_cluster_password: secret
+    dmr_span: internal
+    cert_content: |
+        -----BEGIN CERTIFICATE-----
+        [snip]
+        -----END CERTIFICATE-----
+    enforce_trusted_common_name: false
+public_cloud:
+  hosts:
+    partner_edge_01_EU:
+      ansible_connection: local
+      secure_connection: true
+      port: 943
+      host: mr2.messaging.solace.cloud
+      password: secret
+      username: partner-edge-01-admin
+      msg_vpn: partner-edge-01
+      bridges:
+      - name: mac-partner-edge-01
+        remote_auth_basic_client_username: default
+        remote_auth_basic_password: password
+        virtual_router: auto
+        queues: 
+        - name: mac-partner-edge-01_Queue
+          owner: solace-cloud-client
+        remote_vpns: 
+        - name: default
+          location: v:h2ce5g
+          queue_binding: mac-partner-edge-01_Queue
+          tls_enabled: false
+        trusted_common_names:
+        - name: "*.messaging.solace.cloud"
+    partner_edge_02_US:
+      ansible_connection: local
+      secure_connection: true
+      port: 943
+      host: mr.messaging.solace.cloud
+      password: r1fuaq
+      username: partner-edge-02-admin
+      msg_vpn: partner-edge-02
+      bridges:
+      - name: lenovo-partner-edge-02
+        remote_auth_basic_client_username: default
+        remote_auth_basic_password: password
+        virtual_router: auto
+        queues: 
+        - name: lenovo-partner-edge-02_Queue
+          owner: solace-cloud-client
+        remote_vpns: 
+        - name: default
+          location: v:n8fsi1797
+          queue_binding: lenovo-partner-edge-02_Queue
+          tls_enabled: false
+        trusted_common_names:
+        - name: "*.messaging.solace.cloud"
