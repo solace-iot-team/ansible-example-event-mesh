@@ -25,7 +25,7 @@
       secure_connection: "{{ secure_connection }}"
       timeout: 25
       x_broker: "{{ x_broker | default() }}"
-    solace_client:
+    solace_client_user:
       password: "{{ password }}"
       host: "{{ host }}"
       port: "{{ port }}"
@@ -60,7 +60,7 @@
 
   tasks:
   - name: Remove Client Usernames before removing the ACL Profile
-    solace_client:
+    solace_client_user:
       name: "{{ item.name }}"
       msg_vpn: "{{ msg_vpn }}"
       state: absent
@@ -130,7 +130,7 @@
         skip_missing: true
 
   - name: Add Client
-    solace_client:
+    solace_client_user:
       name: "{{ item.name }}"
       msg_vpn: "{{ msg_vpn }}"
       settings:
